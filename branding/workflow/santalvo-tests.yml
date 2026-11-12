@@ -1,0 +1,44 @@
+name: Santalvo tools test
+
+# Checks that branding/Unprotect-Build.ps1 (used by Make-Installers on the office PC)
+# can decrypt what the build's encrypt step produces, in Windows PowerShell 5.1 and 7.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["branding/Unprotect-Build.ps1", ".github/workflows/santalvo-tests.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  decrypt:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Encrypt a sample the same way the build does
+        shell: bash
+        run: |
+          head -c 3000017 /dev/urandom > sample.bin
+          sha256sum sample.bin | cut -d' ' -f1 > sample.sha
+          ARTIFACT_PASSWORD='Test-Pass-123' openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -md sha256 -salt -pass env:ARTIFACT_PASSWORD -in sample.bin -out sample.bin.enc
+      - name: Decrypt in Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          . .\branding\Unprotect-Build.ps1
+          Unprotect-Build -In sample.bin.enc -Out out51.bin -Password 'Test-Pass-123'
+          $want = (Get-Content sample.sha).Trim(); $got = (Get-FileHash out51.bin -Algorithm SHA256).Hash.ToLower()
+          if ($want -ne $got) { throw "hash mismatch $want $got" }
+          $bad = $false; try { Unprotect-Build -In sample.bin.enc -Out bad.bin -Password 'wrong' } catch { $bad = $true }
+          if (-not $bad) { throw 'wrong password was not detected' }
+          "PS $($PSVersionTable.PSVersion) OK"
+      - name: Decrypt in PowerShell 7
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          . ./branding/Unprotect-Build.ps1
+          Unprotect-Build -In sample.bin.enc -Out out7.bin -Password 'Test-Pass-123'
+          $want = (Get-Content sample.sha).Trim(); $got = (Get-FileHash out7.bin -Algorithm SHA256).Hash.ToLower()
+          if ($want -ne $got) { throw "hash mismatch $want $got" }
+          "PS $($PSVersionTable.PSVersion) OK"

@@ -17,7 +17,7 @@ from ruamel.yaml.scalarstring import LiteralScalarString as L
 
 APP = "SantalvoSupport"
 WF = Path(".github/workflows")
-KEEP_FILES = {"flutter-build.yml", "bridge.yml", "third-party-RustDeskTempTopMostWindow.yml", "santalvo-build.yml"}
+KEEP_FILES = {"flutter-build.yml", "bridge.yml", "third-party-RustDeskTempTopMostWindow.yml", "santalvo-build.yml", "santalvo-tests.yml"}
 KEEP_JOBS = {"validate-update-metadata-keys", "generate-bridge", "build-RustDeskTempTopMostWindow",
              "build-for-windows-flutter", "build-for-macOS", "build-rustdesk-android", "build-rustdesk-linux"}
 MATRIX = {"build-for-windows-flutter": {"x86_64"}, "build-rustdesk-linux": {"x86_64"},
