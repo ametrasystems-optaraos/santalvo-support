@@ -1,0 +1,30 @@
+name: Santalvo Support build
+
+# Builds Windows, macOS, Linux and Android. Results are encrypted with the
+# ARTIFACT_PASSWORD secret and kept as workflow artifacts for 14 days - nothing
+# is published publicly. Needs repo secrets: RENDEZVOUS_SERVER, RS_PUB_KEY,
+# ARTIFACT_PASSWORD (and optionally the four ANDROID_* signing secrets).
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "SANTALVO.txt"
+      - "branding/README*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: santalvo-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    uses: ./.github/workflows/flutter-build.yml
+    secrets: inherit
+    with:
+      upload-artifact: true
+      upload-tag: "unused"

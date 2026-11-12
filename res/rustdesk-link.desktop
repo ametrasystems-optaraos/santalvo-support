@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Santalvo Support
+NoDisplay=true
+MimeType=x-scheme-handler/rustdesk;
+TryExec=santalvosupport
+Exec=santalvosupport %u
+Icon=santalvosupport
+Terminal=false
+Type=Application
+StartupNotify=false
+StartupWMClass=santalvosupport
