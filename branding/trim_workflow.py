@@ -10,6 +10,7 @@
 
 Run from the repo root after apply_branding.py.  Needs: pip install ruamel.yaml
 """
+import copy
 import sys
 from pathlib import Path
 from ruamel.yaml import YAML
@@ -33,6 +34,17 @@ DROP_STEPS = {  # by job: step names removed outright
                                   "Build template packer", "Verify template payload signatures"},
     "build-rustdesk-linux": {"Patch archlinux PKGBUILD", "Build archlinux package", "Publish archlinux package"},
     "build-rustdesk-android": {"Upload Rustdesk library to Artifacts"},
+}
+
+GATE = {  # first job: stop the whole build at once if a secret is missing
+    "name": "Check Santalvo secrets",
+    "shell": "bash",
+    "env": {"RENDEZVOUS_SERVER": "${{ secrets.RENDEZVOUS_SERVER }}", "RS_PUB_KEY": "${{ secrets.RS_PUB_KEY }}",
+            "ARTIFACT_PASSWORD": "${{ secrets.ARTIFACT_PASSWORD }}"},
+    "run": L('missing=""\n'
+             'for v in RENDEZVOUS_SERVER RS_PUB_KEY ARTIFACT_PASSWORD; do [ -n "${!v}" ] || missing="$missing $v"; done\n'
+             'if [ -n "$missing" ]; then echo "::error::Missing repository secrets:$missing (Settings > Secrets and variables > Actions)"; exit 1; fi\n'
+             'echo "Secrets present."\n'),
 }
 
 INJECT = {
@@ -113,8 +125,13 @@ def main():
                 cut = run.index("# rpm package")  # rpm specs still use the old paths: .deb only
                 st["with"]["run"] = L(run[:cut])
             new.append(st)
-            if "actions/checkout" in uses:
-                new.append(dict(INJECT))
+            if "actions/checkout" in uses and j != "validate-update-metadata-keys":
+                inj = copy.deepcopy(INJECT)
+                if st.get("if"):
+                    inj["if"] = st["if"]
+                new.append(inj)
+            if j == "validate-update-metadata-keys" and "actions/checkout" in uses:
+                new.insert(0, copy.deepcopy(GATE))
         if j in OUTPUTS:
             new.append(encrypt_step(j, OUTPUTS[j]))
             new.append(upload_step(j))
