@@ -54,6 +54,15 @@ INJECT = {
     "run": "bash branding/inject_secrets.sh\n",
 }
 
+RENAME_EXE = {
+    "name": "Name the program file SantalvoSupport.exe",
+    "if": "env.UPLOAD_ARTIFACT == 'true'",
+    "shell": "bash",
+    "run": L('set -e\n'
+             'mv ./rustdesk/rustdesk.exe "./rustdesk/%s.exe"\n'
+             'ls -l ./rustdesk/*.exe\n' % APP),
+}
+
 
 def encrypt_step(job, glob):
     return {
@@ -120,6 +129,12 @@ def main():
                 continue                       # no plain uploads of built apps
             if name in DROP_STEPS.get(j, ()):
                 continue
+            if j == "build-for-windows-flutter" and name == "Build self-extracted executable":
+                # RustDesk's first install copies the program file as-is but registers <APP>.exe:
+                # the main file must already carry our name, or the shortcut and service point at nothing
+                new.append(copy.deepcopy(RENAME_EXE))
+                st["run"] = L(str(st["run"]).replace("../../rustdesk/rustdesk.exe", f"../../rustdesk/{APP}.exe"))
+                assert f"{APP}.exe" in st["run"]
             if j == "build-rustdesk-linux" and name == "Build rustdesk":
                 run = st["with"]["run"]
                 cut = run.index("# rpm package")  # rpm specs still use the old paths: .deb only
